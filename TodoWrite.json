@@ -11,11 +11,11 @@
   { "content":"Switch sqlx to SQLite driver (simplified to in-memory)", "status":"completed", "priority":"high" },
   { "content":"Replace sqlx compile‑time macros with runtime queries", "status":"completed", "priority":"high" },
   { "content":"Start backend server and test auth/deal endpoints", "status":"completed", "priority":"high" },
-  { "content":"Connect React UI to backend (API client configured)", "status":"in_progress", "priority":"high" },
-  { "content":"Integrate Solana Anchor escrow contract", "status":"pending", "priority":"medium" },
-  { "content":"Add anti‑bot protection (hCaptcha)", "status":"pending", "priority":"medium" },
-  { "content":"Add AI screenshot analysis (Claude Vision mock)", "status":"pending", "priority":"low" },
+  { "content":"Connect React UI to backend (API client configured)", "status":"completed", "priority":"high" },
+  { "content":"Integrate Solana Anchor escrow contract", "status":"completed", "priority":"medium" },
+  { "content":"Add anti‑bot protection (hCaptcha)", "status":"completed", "priority":"medium" },
+  { "content":"Add AI screenshot analysis (Claude Vision mock)", "status":"completed", "priority":"low" },
   { "content":"Build dispute UI and admin dashboard", "status":"completed", "priority":"low" },
-  { "content":"Create CI/CD pipeline", "status":"pending", "priority":"low" },
-  { "content":"Write deployment docs", "status":"pending", "priority":"low" }
+  { "content":"Create CI/CD pipeline", "status":"completed", "priority":"low" },
+  { "content":"Write deployment docs", "status":"completed", "priority":"low" }
 ]

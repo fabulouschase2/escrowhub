@@ -4,13 +4,19 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-actix-web = "4"
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
+actix-web = "4.0"
+actix-session = "0.5"
+actix-cors = "0.6"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
 dotenv = "0.15"
 bcrypt = "0.12"
-jsonwebtoken = "8"
-uuid = { version = "1", features = ["v4"] }
+jsonwebtoken = "8.3"
+solana-client = "1.14"
+solana-program = "1.14"
+anchor-client = "0.29.0"
+uuid = { version = "1.0", features = ["v4"] }
 chrono = { version = "0.4", features = ["serde"] }
 env_logger = "0.10"
 log = "0.4"
+sqlx = { version = "0.6", features = ["runtime-tokio-native-tls", "sqlite", "macros"] }
