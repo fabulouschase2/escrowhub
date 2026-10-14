@@ -1,0 +1,21 @@
+[
+  { "content":"Initialize git repo", "status":"completed", "priority":"high" },
+  { "content":"Create monorepo folder structure", "status":"completed", "priority":"high" },
+  { "content":"Write README and .gitignore", "status":"completed", "priority":"high" },
+  { "content":"Scaffold React + Vite + Tailwind frontend", "status":"completed", "priority":"high" },
+  { "content":"Set up npm dependencies (React, Solana Web3)", "status":"completed", "priority":"high" },
+  { "content":"Create Rust Actix‑web backend crate", "status":"completed", "priority":"high" },
+  { "content":"Backend compiles and /health endpoint works", "status":"completed", "priority":"high" },
+  { "content":"Add user auth models and routes", "status":"completed", "priority":"high" },
+  { "content":"Add deal models and routes", "status":"completed", "priority":"high" },
+  { "content":"Switch sqlx to SQLite driver (simplified to in-memory)", "status":"completed", "priority":"high" },
+  { "content":"Replace sqlx compile‑time macros with runtime queries", "status":"completed", "priority":"high" },
+  { "content":"Start backend server and test auth/deal endpoints", "status":"completed", "priority":"high" },
+  { "content":"Connect React UI to backend (API client configured)", "status":"in_progress", "priority":"high" },
+  { "content":"Integrate Solana Anchor escrow contract", "status":"pending", "priority":"medium" },
+  { "content":"Add anti‑bot protection (hCaptcha)", "status":"pending", "priority":"medium" },
+  { "content":"Add AI screenshot analysis (Claude Vision mock)", "status":"pending", "priority":"low" },
+  { "content":"Build dispute UI and admin dashboard", "status":"completed", "priority":"low" },
+  { "content":"Create CI/CD pipeline", "status":"pending", "priority":"low" },
+  { "content":"Write deployment docs", "status":"pending", "priority":"low" }
+]
