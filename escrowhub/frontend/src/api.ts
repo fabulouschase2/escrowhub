@@ -1,9 +1,11 @@
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8080';
 
 async function request(path: string, options: RequestInit = {}) {
+  const token = localStorage.getItem('auth_token');
   const response = await fetch(`${API_BASE}${path}`, {
     headers: {
       'Content-Type': 'application/json',
+      'Authorization': token ? `Bearer ${token}` : '',
       ...options.headers,
     },
     ...options,
@@ -18,28 +20,34 @@ async function request(path: string, options: RequestInit = {}) {
 }
 
 export const authApi = {
-  register: (email: string, password: string, walletAddress?: string) =>
+  register: (email: string, password: string, walletAddress?: string, hcaptchaToken?: string) =>
     request('/auth/register', {
       method: 'POST',
-      body: JSON.stringify({ email, password, wallet_address: walletAddress }),
+      body: JSON.stringify({ email, password, wallet_address: walletAddress, hcaptcha_token: hcaptchaToken }),
     }),
 
-  login: (email: string, password: string) =>
+  login: (email: string, password: string, hcaptchaToken?: string) =>
     request('/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ email, password, hcaptcha_token: hcaptchaToken }),
     }),
 };
 
 export const dealsApi = {
-  create: (sellerId: string, platformFeePct?: number) =>
+  create: (sellerId: string, amount?: number, currency?: string, platformFeePct?: number) =>
     request('/deals', {
       method: 'POST',
-      body: JSON.stringify({ seller_id: sellerId, platform_fee_pct: platformFeePct }),
+      body: JSON.stringify({
+        seller_id: sellerId,
+        amount,
+        currency,
+        platform_fee_pct: platformFeePct,
+      }),
     }),
 
-  get: (id: string) =>
-    request(`/deals/${id}`),
+  list: () => request('/deals'),
+
+  get: (id: string) => request(`/deals/${id}`),
 };
 
 export const escrowApi = {
