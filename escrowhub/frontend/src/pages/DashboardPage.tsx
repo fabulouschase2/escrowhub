@@ -11,6 +11,8 @@ interface Deal {
   id: string;
   buyer_id: string;
   seller_id: string;
+  buyer_email?: string | null;
+  seller_email?: string | null;
   amount?: number;
   currency?: string;
   platform_fee_pct?: number;
@@ -19,10 +21,13 @@ interface Deal {
   updated_at: string;
 }
 
+type RoleFilter = 'all' | 'buying' | 'selling';
+
 export function DashboardPage() {
   const { user, logout } = useAuth();
   const [deals, setDeals] = useState<Deal[]>([]);
   const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState<RoleFilter>('all');
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -40,10 +45,21 @@ export function DashboardPage() {
     }
   };
 
+  const roleOf = (deal: Deal): 'buyer' | 'seller' | null => {
+    if (!user) return null;
+    if (deal.buyer_id === user.id) return 'buyer';
+    if (deal.seller_id === user.id) return 'seller';
+    return null;
+  };
+
+  const myDeals = deals.filter((d) => roleOf(d) !== null);
+  const visibleDeals = filter === 'all' ? deals : myDeals.filter((d) => roleOf(d) === filter);
+
   const stats = {
     total: deals.length,
-    active: deals.filter(d => d.status === 'created' || d.status === 'funded').length,
-    completed: deals.filter(d => d.status === 'completed').length,
+    buying: myDeals.filter((d) => roleOf(d) === 'buyer').length,
+    selling: myDeals.filter((d) => roleOf(d) === 'seller').length,
+    completed: deals.filter((d) => d.status === 'completed').length,
   };
 
   return (
@@ -54,22 +70,25 @@ export function DashboardPage() {
         <div className="flex justify-between items-center mb-8">
           <div>
             <h1 className="text-3xl font-bold text-white mb-2">Dashboard</h1>
-            <p className="text-apple-muted">Manage your escrow deals and transactions</p>
+            <p className="text-apple-muted">
+              Welcome back{user?.email ? `, ${user.email}` : ''} — manage your escrow deals
+            </p>
           </div>
           <GlassButton onClick={() => navigate('/deals/create')}>
             Create New Deal
           </GlassButton>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        {/* Role stats */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <GlassCard>
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-apple-muted text-sm mb-1">Total Deals</p>
+                <p className="text-apple-muted text-sm mb-1">All Deals</p>
                 <p className="text-3xl font-bold text-white">{stats.total}</p>
               </div>
-              <div className="w-12 h-12 rounded-xl bg-apple-sky/20 flex items-center justify-center">
-                <svg className="w-6 h-6 text-apple-sky" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center">
+                <svg className="w-6 h-6 text-apple-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                 </svg>
               </div>
@@ -79,12 +98,26 @@ export function DashboardPage() {
           <GlassCard>
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-apple-muted text-sm mb-1">Active Deals</p>
-                <p className="text-3xl font-bold text-white">{stats.active}</p>
+                <p className="text-apple-muted text-sm mb-1">You're Buying</p>
+                <p className="text-3xl font-bold text-apple-sky">{stats.buying}</p>
               </div>
-              <div className="w-12 h-12 rounded-xl bg-apple-warning/20 flex items-center justify-center">
-                <svg className="w-6 h-6 text-apple-warning" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              <div className="w-12 h-12 rounded-xl bg-apple-sky/20 flex items-center justify-center">
+                <svg className="w-6 h-6 text-apple-sky" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+              </div>
+            </div>
+          </GlassCard>
+
+          <GlassCard>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-apple-muted text-sm mb-1">You're Selling</p>
+                <p className="text-3xl font-bold text-apple-success">{stats.selling}</p>
+              </div>
+              <div className="w-12 h-12 rounded-xl bg-apple-success/20 flex items-center justify-center">
+                <svg className="w-6 h-6 text-apple-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                 </svg>
               </div>
             </div>
@@ -106,63 +139,121 @@ export function DashboardPage() {
         </div>
 
         <GlassCard>
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-semibold text-white">Your Deals</h2>
+          <div className="flex flex-wrap justify-between items-center gap-4 mb-6">
+            <h2 className="text-xl font-semibold text-white">Deals</h2>
+            <div className="flex space-x-2">
+              {([
+                { key: 'all', label: `All (${stats.total})` },
+                { key: 'buying', label: `Buying (${stats.buying})` },
+                { key: 'selling', label: `Selling (${stats.selling})` },
+              ] as { key: RoleFilter; label: string }[]).map((tab) => (
+                <button
+                  key={tab.key}
+                  onClick={() => setFilter(tab.key)}
+                  className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+                    filter === tab.key
+                      ? 'bg-apple-sky text-white shadow-sky-sm'
+                      : 'bg-white/5 text-apple-muted hover:bg-white/10 border border-white/10'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           {loading ? (
             <div className="flex items-center justify-center h-64">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-apple-sky"></div>
             </div>
-          ) : deals.length === 0 ? (
+          ) : visibleDeals.length === 0 ? (
             <div className="text-center py-12">
               <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-white/5 flex items-center justify-center">
                 <svg className="w-8 h-8 text-apple-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                 </svg>
               </div>
-              <p className="text-apple-muted mb-4">No deals yet</p>
-              <GlassButton onClick={() => navigate('/deals/create')}>
-                Create Your First Deal
-              </GlassButton>
+              <p className="text-apple-muted mb-4">
+                {filter === 'all' ? 'No deals yet' : filter === 'buying' ? "You're not buying any deals yet" : "You're not selling any deals yet"}
+              </p>
+              {filter === 'all' && (
+                <GlassButton onClick={() => navigate('/deals/create')}>
+                  Create Your First Deal
+                </GlassButton>
+              )}
             </div>
           ) : (
             <div className="space-y-3">
-              {deals.map((deal) => (
-                <div key={deal.id} className="flex items-center justify-between p-4 bg-white/5 rounded-xl hover:bg-white/8 transition-colors">
-                  <div className="flex items-center space-x-4">
-                    <div className="w-10 h-10 rounded-lg bg-apple-sky/20 flex items-center justify-center">
-                      <span className="text-apple-sky font-mono text-sm">{deal.id.slice(0, 4)}</span>
-                    </div>
-                    <div>
-                      <p className="text-white font-medium font-mono text-sm">{deal.id}</p>
-                      <p className="text-apple-muted text-xs">{new Date(deal.created_at).toLocaleDateString()}</p>
-                    </div>
-                  </div>
+              {visibleDeals.map((deal) => {
+                const role = roleOf(deal);
+                const counterparty =
+                  role === 'buyer'
+                    ? deal.seller_email || `Seller ${deal.seller_id?.slice(0, 8)}...`
+                    : role === 'seller'
+                    ? deal.buyer_email || `Buyer ${deal.buyer_id?.slice(0, 8)}...`
+                    : 'Unknown party';
 
-                  <div className="flex items-center space-x-6">
-                    {deal.amount && (
-                      <div className="text-right">
-                        <p className="text-white font-semibold">{deal.amount} {deal.currency || 'USDC'}</p>
-                        <p className="text-apple-muted text-xs">Fee: {deal.platform_fee_pct || 10}%</p>
+                return (
+                  <div key={deal.id} className="flex flex-wrap items-center justify-between gap-3 p-4 bg-white/5 rounded-xl hover:bg-white/10 transition-colors">
+                    <div className="flex items-center space-x-4">
+                      <div className="w-10 h-10 rounded-lg bg-apple-sky/20 flex items-center justify-center">
+                        <span className="text-apple-sky font-mono text-sm">{deal.id.slice(0, 4)}</span>
                       </div>
-                    )}
-                    <GlassBadge variant={
-                      deal.status === 'completed' ? 'success' :
-                      deal.status === 'disputed' ? 'danger' :
-                      deal.status === 'funded' ? 'info' : 'warning'
-                    }>
-                      {deal.status}
-                    </GlassBadge>
-                    <Link
-                      to={`/deals/${deal.id}/live`}
-                      className="text-apple-sky hover:text-white text-sm font-medium transition-colors"
-                    >
-                      Enter Live Room
-                    </Link>
+                      <div>
+                        <p className="text-white font-medium font-mono text-sm">{deal.id.slice(0, 18)}...</p>
+                        <p className="text-apple-muted text-xs">{new Date(deal.created_at).toLocaleDateString()}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap items-center space-x-4 gap-2">
+                      {/* Your role in this deal */}
+                      {role === 'buyer' && (
+                        <GlassBadge variant="info" className="!bg-apple-sky/20 !text-apple-sky !border-apple-sky/30">
+                          🛒 You're Buying
+                        </GlassBadge>
+                      )}
+                      {role === 'seller' && (
+                        <GlassBadge variant="success" className="!bg-apple-success/20 !text-apple-success !border-apple-success/30">
+                          💼 You're Selling
+                        </GlassBadge>
+                      )}
+                      {!role && <GlassBadge>👤 Observer</GlassBadge>}
+
+                      {/* Counterparty */}
+                      <div className="text-right">
+                        <p className="text-apple-muted text-xs">
+                          {role === 'buyer' ? 'Seller' : 'Buyer'}:
+                        </p>
+                        <p className="text-white text-sm">{counterparty}</p>
+                      </div>
+
+                      {deal.amount ? (
+                        <div className="text-right">
+                          <p className="text-white font-semibold">{deal.amount} {deal.currency || 'USDC'}</p>
+                          <p className="text-apple-muted text-xs">Fee: {deal.platform_fee_pct || 10}%</p>
+                        </div>
+                      ) : null}
+
+                      <GlassBadge
+                        variant={
+                          deal.status === 'completed' ? 'success' :
+                          deal.status === 'disputed' ? 'danger' :
+                          deal.status === 'funded' ? 'info' : 'warning'
+                        }
+                      >
+                        {deal.status}
+                      </GlassBadge>
+
+                      <Link
+                        to={`/deals/${deal.id}/live`}
+                        className="text-apple-sky hover:text-white text-sm font-medium transition-colors"
+                      >
+                        Enter Live Room →
+                      </Link>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </GlassCard>

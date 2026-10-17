@@ -1,15 +1,27 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { videoApi, escrowApi, aiApi } from '../api';
+import { videoApi, escrowApi, aiApi, dealsApi } from '../api';
 import { GlassNavbar } from '../components/GlassNavbar';
 import { GlassCard } from '../components/GlassCard';
 import { GlassButton } from '../components/GlassButton';
 import { GlassBadge } from '../components/GlassBadge';
 import { useAuth } from '../auth';
 
+interface DealInfo {
+  id: string;
+  buyer_id: string;
+  seller_id: string;
+  buyer_email?: string | null;
+  seller_email?: string | null;
+  amount?: number;
+  currency?: string;
+  status: string;
+}
+
 export function LiveRoomPage() {
   const { id } = useParams<{ id: string }>();
   const [room, setRoom] = useState<any>(null);
+  const [deal, setDeal] = useState<DealInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [isScreenSharing, setIsScreenSharing] = useState(false);
@@ -27,6 +39,7 @@ export function LiveRoomPage() {
     if (id) {
       loadRoom(id);
       loadAiChecks(id);
+      loadDeal(id);
     }
   }, [id]);
 
@@ -41,6 +54,15 @@ export function LiveRoomPage() {
     }
   };
 
+  const loadDeal = async (dealId: string) => {
+    try {
+      const info = await dealsApi.get(dealId);
+      setDeal(info);
+    } catch (err) {
+      console.error('Failed to load deal info:', err);
+    }
+  };
+
   const loadAiChecks = async (sessionId: string) => {
     try {
       const checks = await aiApi.getChecks(sessionId);
@@ -49,6 +71,15 @@ export function LiveRoomPage() {
       console.error('Failed to load AI checks:', err);
     }
   };
+
+  const role: 'buyer' | 'seller' | null =
+    user && deal
+      ? deal.buyer_id === user.id
+        ? 'buyer'
+        : deal.seller_id === user.id
+        ? 'seller'
+        : null
+      : null;
 
   const handleDeposit = async () => {
     if (!id) return;
@@ -127,6 +158,53 @@ export function LiveRoomPage() {
             Exit
           </GlassButton>
         </div>
+
+        {/* Role banner: who you are in this deal */}
+        {deal && (
+          <GlassCard className="mb-6">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center space-x-3">
+                {role === 'buyer' && (
+                  <GlassBadge variant="info" className="!bg-apple-sky/20 !text-apple-sky !border-apple-sky/30 !text-sm !px-4 !py-2">
+                    🛒 You are the Buyer — you deposited and release the escrow
+                  </GlassBadge>
+                )}
+                {role === 'seller' && (
+                  <GlassBadge variant="success" className="!bg-apple-success/20 !text-apple-success !border-apple-success/30 !text-sm !px-4 !py-2">
+                    💼 You are the Seller — perform the work, then the buyer releases funds
+                  </GlassBadge>
+                )}
+                {!role && <GlassBadge className="!text-sm !px-4 !py-2">👤 You are an observer of this deal</GlassBadge>}
+              </div>
+              <div className="flex flex-wrap gap-6 text-sm">
+                <div>
+                  <p className="text-apple-muted text-xs mb-0.5">Buyer</p>
+                  <p className="text-white font-medium">
+                    {deal.buyer_email || `${deal.buyer_id.slice(0, 8)}...`}
+                    {role === 'buyer' && <span className="text-apple-sky ml-2">(you)</span>}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-apple-muted text-xs mb-0.5">Seller</p>
+                  <p className="text-white font-medium">
+                    {deal.seller_email || `${deal.seller_id.slice(0, 8)}...`}
+                    {role === 'seller' && <span className="text-apple-success ml-2">(you)</span>}
+                  </p>
+                </div>
+                {deal.amount ? (
+                  <div>
+                    <p className="text-apple-muted text-xs mb-0.5">Amount</p>
+                    <p className="text-white font-medium">{deal.amount} {deal.currency || 'USDC'}</p>
+                  </div>
+                ) : null}
+                <div>
+                  <p className="text-apple-muted text-xs mb-0.5">Deal Status</p>
+                  <p className="text-white font-medium capitalize">{deal.status}</p>
+                </div>
+              </div>
+            </div>
+          </GlassCard>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Main Video Area */}

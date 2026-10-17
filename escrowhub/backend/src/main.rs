@@ -1,5 +1,5 @@
 use actix_cors::Cors;
-use actix_web::{web, App, HttpServer, HttpResponse};
+use actix_web::{web, App, HttpServer, HttpResponse, HttpRequest};
 use serde_json::json;
 use std::sync::Mutex;
 
@@ -10,6 +10,41 @@ struct AppState {
     escrows: Mutex<Vec<serde_json::Value>>,
     disputes: Mutex<Vec<serde_json::Value>>,
     ai_checks: Mutex<Vec<serde_json::Value>>,
+}
+
+/// Extract user ID from the "Authorization: Bearer jwt-{user_id}" header.
+fn get_user_id_from_token(req: &HttpRequest) -> Option<String> {
+    let auth = req.headers().get("Authorization")?.to_str().ok()?;
+    let token = auth.strip_prefix("Bearer ")?;
+    token.strip_prefix("jwt-").map(|s| s.to_string())
+}
+
+/// Look up a user's email by ID (for enriching deal responses).
+fn email_for_user(state: &AppState, user_id: &str) -> Option<String> {
+    let users = state.users.lock().unwrap();
+    users
+        .iter()
+        .find(|u| u.get("id").and_then(|s| s.as_str()) == Some(user_id))
+        .and_then(|u| u.get("email").and_then(|s| s.as_str()))
+        .map(|s| s.to_string())
+}
+
+/// Resolve a seller identifier — user ID, email, or Solana wallet address —
+/// to that user's ID, so deals always link to registered accounts.
+fn resolve_user_id(state: &AppState, identifier: &str) -> Option<String> {
+    let users = state.users.lock().unwrap();
+    for u in users.iter() {
+        let id = u.get("id").and_then(|s| s.as_str()).unwrap_or("");
+        let email = u.get("email").and_then(|s| s.as_str()).unwrap_or("");
+        let wallet = u.get("wallet_address").and_then(|s| s.as_str()).unwrap_or("");
+        if identifier == id
+            || (!email.is_empty() && identifier.eq_ignore_ascii_case(email))
+            || (!wallet.is_empty() && identifier == wallet)
+        {
+            return Some(id.to_string());
+        }
+    }
+    None
 }
 
 async fn health() -> HttpResponse {
@@ -63,13 +98,28 @@ async fn login(state: web::Data<AppState>, req: web::Json<serde_json::Value>) ->
     }
 }
 
-async fn create_deal(state: web::Data<AppState>, req: web::Json<serde_json::Value>) -> HttpResponse {
-    let seller_id = req.get("seller_id").and_then(|v| v.as_str()).unwrap_or("").to_string();
+async fn create_deal(state: web::Data<AppState>, req: web::Json<serde_json::Value>, http_req: HttpRequest) -> HttpResponse {
+    // The buyer is whoever is authenticated via the Bearer token.
+    let buyer_id = match get_user_id_from_token(&http_req) {
+        Some(id) => id,
+        None => return HttpResponse::Unauthorized().json(json!({ "error": "Authentication required to create a deal" })),
+    };
+
+    // The seller can be identified by email, wallet address, or user ID.
+    let seller_input = req.get("seller_id").and_then(|v| v.as_str()).unwrap_or("").to_string();
+    let seller_id = match resolve_user_id(&state, &seller_input) {
+        Some(id) => id,
+        None => {
+            return HttpResponse::BadRequest().json(json!({
+                "error": "Seller not found. The seller must be a registered user — use their email, Solana wallet address, or user ID."
+            }))
+        }
+    };
+
     let amount = req.get("amount").and_then(|v| v.as_f64()).unwrap_or(0.0);
     let currency = req.get("currency").and_then(|v| v.as_str()).unwrap_or("USDC").to_string();
     let platform_fee_pct = req.get("platform_fee_pct").and_then(|v| v.as_f64()).unwrap_or(10.0);
     let id = uuid::Uuid::new_v4().to_string();
-    let buyer_id = uuid::Uuid::new_v4().to_string();
     let deal = json!({
         "id": id, "buyer_id": buyer_id, "seller_id": seller_id,
         "amount": amount, "currency": currency, "platform_fee_pct": platform_fee_pct,
@@ -77,22 +127,43 @@ async fn create_deal(state: web::Data<AppState>, req: web::Json<serde_json::Valu
         "created_at": chrono::Utc::now().to_rfc3339(),
         "updated_at": chrono::Utc::now().to_rfc3339()
     });
-    {
-        let mut deals = state.deals.lock().unwrap();
-        deals.push(deal);
-    }
+    { let mut deals = state.deals.lock().unwrap(); deals.push(deal); }
     HttpResponse::Ok().json(json!({ "id": id, "status": "created" }))
 }
 
 async fn list_deals(state: web::Data<AppState>) -> HttpResponse {
-    let deals = state.deals.lock().unwrap();
-    HttpResponse::Ok().json(json!({ "deals": deals.as_slice() }))
+    let deals = state.deals.lock().unwrap().clone();
+    // Enrich each deal with buyer/seller emails so the UI can show
+    // "You are the Buyer / Seller" and who the counterparty is.
+    let enriched: Vec<serde_json::Value> = deals
+        .iter()
+        .map(|d| {
+            let buyer_id = d.get("buyer_id").and_then(|s| s.as_str()).unwrap_or("");
+            let seller_id = d.get("seller_id").and_then(|s| s.as_str()).unwrap_or("");
+            let buyer_email = email_for_user(&state, buyer_id);
+            let seller_email = email_for_user(&state, seller_id);
+            let mut d = d.clone();
+            d["buyer_email"] = json!(buyer_email);
+            d["seller_email"] = json!(seller_email);
+            d
+        })
+        .collect();
+    HttpResponse::Ok().json(json!({ "deals": enriched }))
 }
 
 async fn get_deal(state: web::Data<AppState>, path: web::Path<String>) -> HttpResponse {
     let deals = state.deals.lock().unwrap();
     match deals.iter().find(|d| d.get("id").and_then(|s| s.as_str()) == Some(&**path)) {
-        Some(d) => HttpResponse::Ok().json(d),
+        Some(d) => {
+            let buyer_id = d.get("buyer_id").and_then(|s| s.as_str()).unwrap_or("");
+            let seller_id = d.get("seller_id").and_then(|s| s.as_str()).unwrap_or("");
+            let buyer_email = email_for_user(&state, buyer_id);
+            let seller_email = email_for_user(&state, seller_id);
+            let mut d = d.clone();
+            d["buyer_email"] = json!(buyer_email);
+            d["seller_email"] = json!(seller_email);
+            HttpResponse::Ok().json(d)
+        }
         None => HttpResponse::NotFound().json(json!({ "error": "Deal not found" })),
     }
 }
