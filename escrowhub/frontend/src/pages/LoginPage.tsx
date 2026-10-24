@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth';
+import { setPageMeta } from '../seo';
 import { GlassInput } from '../components/GlassInput';
 import { GlassButton } from '../components/GlassButton';
 import { GlassCard } from '../components/GlassCard';
+import { connectWallet, walletInstalled, shortAddress } from '../wallet';
 
 export function LoginPage() {
   const [email, setEmail] = useState('');
@@ -14,6 +16,24 @@ export function LoginPage() {
   const [isRegister, setIsRegister] = useState(false);
   const { login, register } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    setPageMeta({
+      title: 'Sign in | EscrowHub',
+      description: 'Sign in to EscrowHub to manage Solana escrow deals, review work over live screen share, and release payments when milestones are met.',
+      path: '/login',
+    });
+  }, []);
+
+  const handleConnectPhantom = async () => {
+    setError('');
+    try {
+      const pubkey = await connectWallet();
+      setWalletAddress(pubkey);
+    } catch (err: any) {
+      setError(err.message || 'Could not connect Phantom');
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,12 +55,7 @@ export function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4">
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-apple-sky/10 rounded-full blur-3xl animate-float"></div>
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-apple-blue/10 rounded-full blur-3xl animate-float" style={{ animationDelay: '3s' }}></div>
-      </div>
-
+    <div className="min-h-screen flex items-center justify-center px-4 py-10">
       <GlassCard className="w-full max-w-md relative">
         <div className="text-center mb-8">
           <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-apple-sky flex items-center justify-center shadow-sky">
@@ -48,8 +63,12 @@ export function LoginPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
             </svg>
           </div>
-          <h1 className="text-3xl font-bold text-white mb-2">EscrowHub</h1>
-          <p className="text-apple-muted">Secure blockchain escrow platform</p>
+          <h1 className="text-2xl font-bold text-white mb-2">
+            {isRegister ? 'Create your EscrowHub account' : 'Sign in to EscrowHub'}
+          </h1>
+          <p className="text-apple-muted text-sm">
+            Escrow payments on Solana: on-chain deposits, live screen-share reviews, and dispute resolution.
+          </p>
         </div>
 
         {error && (
@@ -78,13 +97,26 @@ export function LoginPage() {
           />
 
           {isRegister && (
-            <GlassInput
-              label="Solana Wallet Address (Optional)"
-              type="text"
-              value={walletAddress}
-              onChange={setWalletAddress}
-              placeholder="Enter your Solana public key"
-            />
+            <>
+              <GlassInput
+                label="Solana Wallet Address (Optional)"
+                type="text"
+                value={walletAddress}
+                onChange={setWalletAddress}
+                placeholder="Enter your Solana public key"
+              />
+              {walletInstalled() && !walletAddress && (
+                <GlassButton variant="secondary" type="button" onClick={handleConnectPhantom} className="w-full">
+                  Connect Phantom Wallet
+                </GlassButton>
+              )}
+              {walletAddress && (
+                <p className="text-apple-success text-xs flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-apple-success"></span>
+                  Phantom connected: <span className="font-mono">{shortAddress(walletAddress)}</span>
+                </p>
+              )}
+            </>
           )}
 
           <GlassButton

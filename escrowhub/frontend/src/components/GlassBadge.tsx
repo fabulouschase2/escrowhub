@@ -1,20 +1,21 @@
+import React from 'react';
+
 interface GlassBadgeProps {
-  children: ReactNode;
-  variant?: 'default' | 'success' | 'warning' | 'danger' | 'info';
+  variant?: 'success' | 'warning' | 'danger' | 'info';
   className?: string;
+  children: React.ReactNode;
 }
 
-export function GlassBadge({ children, variant = 'default', className = '' }: GlassBadgeProps) {
-  const variants = {
-    default: 'glass-badge',
+export function GlassBadge({ variant = 'success', className = '', children }: GlassBadgeProps) {
+  const variants: Record<string, string> = {
     success: 'glass-badge-success',
     warning: 'glass-badge-warning',
     danger: 'glass-badge-danger',
-    info: 'glass-badge bg-apple-sky/20 text-apple-sky border border-apple-sky/30',
+    info: 'glass-badge',
   };
 
   return (
-    <span className={`${variants[variant]} ${className}`}>
+    <span className={`glass-badge ${variants[variant] || 'glass-badge'} ${className}`}>
       {children}
     </span>
   );

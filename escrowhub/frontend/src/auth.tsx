@@ -37,9 +37,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (email: string, password: string) => {
     const response = await authApi.login(email, password);
     setToken(response.token);
-    setUser(response.user);
+    setUser(response.user ?? null);
     localStorage.setItem('auth_token', response.token);
-    localStorage.setItem('auth_user', JSON.stringify(response.user));
+    if (response.user) {
+      localStorage.setItem('auth_user', JSON.stringify(response.user));
+    }
   };
 
   const register = async (email: string, password: string, walletAddress?: string) => {
@@ -51,6 +53,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = () => {
+    // Revoke server-side first (best effort, local state clears regardless,
+    // and the api layer redirects to /login on 401 from an expired token).
+    authApi.logout().catch(() => {});
     setToken(null);
     setUser(null);
     localStorage.removeItem('auth_token');

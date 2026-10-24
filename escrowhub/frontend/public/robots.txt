@@ -1,0 +1,7 @@
+# EscrowHub crawler policy
+User-agent: *
+Allow: /
+Disallow: /deals/*/live
+Disallow: /disputes/*
+
+Sitemap: https://escrowhub.app/sitemap.xml

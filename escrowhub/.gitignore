@@ -1,0 +1,35 @@
+# Runtime artifacts
+*.log
+*.pid
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+*.json  # escrow-authority.json keypair
+
+# Node / Cargo artifacts
+node_modules/
+target/
+frontend/dist/
+frontend/node_modules/
+
+# Environment secrets
+.env
+backend/.jwt_secret
+backend/.env
+
+# Python patches
+frontend/patch*.py
+
+# ZCode workspace root noise
+../.zcode/
+../.zcodeignore
+../**/*.pdf
+../**/*.docx
+../**/*.md
+../github-projects/
+../scholarship-toolkit/
+../scripts/
+../nodemaven-proxy/

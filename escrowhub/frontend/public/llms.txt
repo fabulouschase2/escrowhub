@@ -1,0 +1,33 @@
+# EscrowHub
+
+> EscrowHub is an escrow payment platform for Solana transactions. Buyers deposit funds into an on-chain escrow, sellers deliver work while sharing their screen live over WebRTC, and escrowed funds are released or refunded through an explicit resolution flow.
+
+## What EscrowHub does
+
+- Holds a buyer's SOL deposit in escrow for a specific deal until delivery is confirmed.
+- Verifies deposits against the Solana blockchain (devnet by default) before recording them.
+- Provides a live deal room where the seller shares their screen over a peer-to-peer WebRTC connection so the buyer can watch the work happen.
+- Offers AI-assisted milestone checks on shared screen content, marked as advisory signals.
+- Records an audit trail of security-relevant events (registration, deposits, releases, refunds, disputes).
+- Manages disputes with an explicit release, refund, split, or cancel resolution.
+
+## Pages
+
+- /login: Sign in or create an account with an email and password.
+- /dashboard: List of the signed-in user's deals with role-based filtering (buying or selling).
+- /deals/create: Create a new escrow deal and receive a unique invitation code.
+- /join: Join an existing deal using an invitation code shared by the deal creator.
+- /deals/{id}/live: The live deal room: WebRTC screen sharing, escrow status, and AI milestone checks.
+- /disputes/{dealId}: Open and resolve disputes for a deal.
+- /analytics: Workspace metrics and the tamper-evident audit trail.
+
+## Key concepts
+
+- Deal: an agreement between a buyer and a seller for a stated amount and currency.
+- Invitation code: a per-deal secret (format inv- followed by 32 hex characters) that lets a counterparty join the deal room.
+- Escrow states: deposited, released, refunded.
+- Deal parties: the buyer and seller recorded on the deal; only parties (plus code-joined participants) can access deal rooms and signaling.
+
+## Contact
+
+- Operated by EscrowHub. Site: https://escrowhub.app

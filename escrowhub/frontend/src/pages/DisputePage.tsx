@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { disputesApi, aiApi } from '../api';
+import { setPageMeta } from '../seo';
 import { GlassNavbar } from '../components/GlassNavbar';
+import { Breadcrumbs } from '../components/Breadcrumbs';
+import { SiteFooter } from '../components/SiteFooter';
 import { GlassCard } from '../components/GlassCard';
 import { GlassButton } from '../components/GlassButton';
 import { GlassBadge } from '../components/GlassBadge';
@@ -27,10 +30,23 @@ export function DisputePage() {
     }
   }, [dealId]);
 
+  useEffect(() => {
+    setPageMeta({
+      title: 'Dispute Resolution | EscrowHub',
+      description: 'Open or resolve a dispute for this deal: escrowed funds can be released, refunded, split, or cancelled.',
+      path: dealId ? `/disputes/${dealId}` : '/disputes',
+      breadcrumbs: [
+        { name: 'Home', path: '/' },
+        { name: 'Dashboard', path: '/dashboard' },
+        { name: 'Disputes', path: dealId ? `/disputes/${dealId}` : '/disputes' },
+      ],
+    });
+  }, [dealId]);
+
   const loadDisputes = async (dealId: string) => {
     try {
       const data = await disputesApi.get(dealId);
-      setDisputes(data);
+      setDisputes(data.disputes || []);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -41,8 +57,8 @@ export function DisputePage() {
   const loadAiChecks = async (dealId: string) => {
     setAiLoading(true);
     try {
-      const checks = await aiApi.getChecks(dealId);
-      setAiChecks(checks);
+      const res = await aiApi.getChecks(dealId);
+      setAiChecks(res.checks || []);
     } catch (err) {
       console.error('Failed to load AI checks:', err);
     } finally {
@@ -83,14 +99,13 @@ export function DisputePage() {
       <GlassNavbar user={user} onLogout={() => navigate('/login')} />
 
       <main className="max-w-4xl mx-auto px-6 py-8">
+        <Breadcrumbs items={[
+          { name: 'Home', path: '/' },
+          { name: 'Dashboard', path: '/dashboard' },
+          { name: 'Disputes', path: dealId ? `/disputes/${dealId}` : '/disputes' },
+        ]} />
         <div className="mb-8">
-          <button onClick={() => navigate('/dashboard')} className="text-apple-muted hover:text-white text-sm mb-4 flex items-center space-x-2">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-            </svg>
-            <span>Back to Dashboard</span>
-          </button>
-          <h1 className="text-3xl font-bold text-white mb-2">Disputes</h1>
+          <h1 className="text-3xl font-bold text-white mb-2">Dispute Resolution</h1>
           <p className="text-apple-muted font-mono text-sm">Deal: {dealId}</p>
         </div>
 
@@ -243,6 +258,7 @@ export function DisputePage() {
           )}
         </GlassCard>
       </main>
+      <SiteFooter />
     </div>
   );
 }

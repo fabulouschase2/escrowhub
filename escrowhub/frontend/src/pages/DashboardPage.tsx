@@ -2,7 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth';
 import { dealsApi } from '../api';
+import { setPageMeta } from '../seo';
 import { GlassNavbar } from '../components/GlassNavbar';
+import { SiteFooter } from '../components/SiteFooter';
 import { GlassCard } from '../components/GlassCard';
 import { GlassButton } from '../components/GlassButton';
 import { GlassBadge } from '../components/GlassBadge';
@@ -19,6 +21,9 @@ interface Deal {
   status: string;
   created_at: string;
   updated_at: string;
+  invitation_code?: string | null;
+  participants?: string[] | null;
+  observers?: string[] | null;
 }
 
 type RoleFilter = 'all' | 'buying' | 'selling';
@@ -34,6 +39,18 @@ export function DashboardPage() {
     loadDeals();
   }, []);
 
+  useEffect(() => {
+    setPageMeta({
+      title: 'Dashboard | EscrowHub',
+      description: 'Your EscrowHub deals: track escrow status for deals you are buying and selling, and enter live deal rooms.',
+      path: '/dashboard',
+      breadcrumbs: [
+        { name: 'Home', path: '/' },
+        { name: 'Dashboard', path: '/dashboard' },
+      ],
+    });
+  }, []);
+
   const loadDeals = async () => {
     try {
       const data = await dealsApi.list();
@@ -45,15 +62,20 @@ export function DashboardPage() {
     }
   };
 
+  // The backend resolves the viewer's relationship to each deal.
   const roleOf = (deal: Deal): 'buyer' | 'seller' | null => {
     if (!user) return null;
-    if (deal.buyer_id === user.id) return 'buyer';
-    if (deal.seller_id === user.id) return 'seller';
+    const viewerRole = (deal as any).viewer_role as string | undefined;
+    if (viewerRole === 'buyer' || viewerRole === 'seller') return viewerRole;
+    if (deal.buyer_email && deal.buyer_email === user.email) return 'buyer';
+    if (deal.seller_email && deal.seller_email === user.email) return 'seller';
     return null;
   };
 
   const myDeals = deals.filter((d) => roleOf(d) !== null);
-  const visibleDeals = filter === 'all' ? deals : myDeals.filter((d) => roleOf(d) === filter);
+  // Tab keys ('buying'/'selling') map to deal roles ('buyer'/'seller').
+  const roleForFilter = filter === 'buying' ? 'buyer' : filter === 'selling' ? 'seller' : null;
+  const visibleDeals = filter === 'all' ? deals : myDeals.filter((d) => roleOf(d) === roleForFilter);
 
   const stats = {
     total: deals.length,
@@ -71,12 +93,22 @@ export function DashboardPage() {
           <div>
             <h1 className="text-3xl font-bold text-white mb-2">Dashboard</h1>
             <p className="text-apple-muted">
-              Welcome back{user?.email ? `, ${user.email}` : ''} — manage your escrow deals
+              Welcome back{user?.email ? `, ${user.email}` : ''}. Manage your escrow deals:
             </p>
           </div>
-          <GlassButton onClick={() => navigate('/deals/create')}>
-            Create New Deal
-          </GlassButton>
+          <div className="flex flex-wrap space-x-3">
+            <GlassButton variant="secondary" onClick={() => navigate('/join')}>
+              <span className="flex items-center space-x-2">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                </svg>
+                <span>Join with Code</span>
+              </span>
+            </GlassButton>
+            <GlassButton onClick={() => navigate('/deals/create')}>
+              Create New Deal
+            </GlassButton>
+          </div>
         </div>
 
         {/* Role stats */}
@@ -244,12 +276,22 @@ export function DashboardPage() {
                         {deal.status}
                       </GlassBadge>
 
-                      <Link
-                        to={`/deals/${deal.id}/live`}
-                        className="text-apple-sky hover:text-white text-sm font-medium transition-colors"
-                      >
-                        Enter Live Room →
-                      </Link>
+                      {/* Check if the user is authorized to enter directly or needs to join via invitation */}
+                      {true ? (
+                        <Link
+                          to={`/deals/${deal.id}/live`}
+                          className="text-apple-sky hover:text-white text-sm font-medium transition-colors"
+                        >
+                          Enter Live Room →
+                        </Link>
+                      ) : (
+                        <Link
+                          to={`/deals/${deal.id}/join`}
+                          className="px-3 py-1.5 rounded-lg bg-apple-sky/20 border border-apple-sky/30 text-apple-sky hover:bg-apple-sky/30 text-sm font-medium transition-all"
+                        >
+                          Join Deal Code →
+                        </Link>
+                      )}
                     </div>
                   </div>
                 );
@@ -258,6 +300,7 @@ export function DashboardPage() {
           )}
         </GlassCard>
       </main>
+      <SiteFooter />
     </div>
   );
 }

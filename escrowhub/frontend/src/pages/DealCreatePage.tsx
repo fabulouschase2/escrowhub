@@ -1,7 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { dealsApi } from '../api';
+import { setPageMeta } from '../seo';
 import { GlassNavbar } from '../components/GlassNavbar';
+import { Breadcrumbs } from '../components/Breadcrumbs';
+import { SiteFooter } from '../components/SiteFooter';
 import { GlassCard } from '../components/GlassCard';
 import { GlassButton } from '../components/GlassButton';
 import { GlassInput } from '../components/GlassInput';
@@ -16,7 +19,34 @@ export function DealCreatePage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [createdDeal, setCreatedDeal] = useState<{ id: string; invitation_code: string } | null>(null);
+  const [copied, setCopied] = useState(false);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    setPageMeta({
+      title: 'Create a Deal | EscrowHub',
+      description: 'Create a Solana escrow deal: set the seller, amount, and platform fee, then share the invitation code with your counterparty.',
+      path: '/deals/create',
+      breadcrumbs: [
+        { name: 'Home', path: '/' },
+        { name: 'Dashboard', path: '/dashboard' },
+        { name: 'Create a Deal', path: '/deals/create' },
+      ],
+    });
+  }, []);
+
+  const copyInviteLink = async () => {
+    if (!createdDeal) return;
+    const link = `${window.location.origin}/deals/${createdDeal.id}/join?code=${encodeURIComponent(createdDeal.invitation_code)}`;
+    try {
+      await navigator.clipboard.writeText(link);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Clipboard unavailable, the code stays visible above for manual sharing.
+    }
+  };
 
   const platformFee = amount ? (parseFloat(amount) * platformFeePct / 100).toFixed(2) : '0.00';
   const totalAmount = amount ? (parseFloat(amount) + parseFloat(platformFee)).toFixed(2) : '0.00';
@@ -29,10 +59,8 @@ export function DealCreatePage() {
 
     try {
       const deal = await dealsApi.create(sellerId, parseFloat(amount), currency, platformFeePct);
-      setSuccess(`Deal created successfully! Deal ID: ${deal.id}`);
-      setTimeout(() => {
-        navigate(`/deals/${deal.id}/live`);
-      }, 2000);
+      setCreatedDeal(deal);
+      setSuccess(`Deal created successfully! Share the invitation code or link below with your counterparty.`);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -44,15 +72,14 @@ export function DealCreatePage() {
     <div className="min-h-screen">
       <GlassNavbar user={user} onLogout={() => navigate('/login')} />
 
-      <main className="max-w-2xl mx-auto px-6 py-8">
+      <main className="max-w-2xl mx-auto px-4 sm:px-6 py-8">
+        <Breadcrumbs items={[
+          { name: 'Home', path: '/' },
+          { name: 'Dashboard', path: '/dashboard' },
+          { name: 'Create a Deal', path: '/deals/create' },
+        ]} />
         <div className="mb-8">
-          <button onClick={() => navigate('/dashboard')} className="text-apple-muted hover:text-white text-sm mb-4 flex items-center space-x-2">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-            </svg>
-            <span>Back to Dashboard</span>
-          </button>
-          <h1 className="text-3xl font-bold text-white mb-2">Create New Deal</h1>
+          <h1 className="text-3xl font-bold text-white mb-2">Create a New Escrow Deal</h1>
           <p className="text-apple-muted">Set up a secure escrow transaction</p>
         </div>
 
@@ -68,13 +95,56 @@ export function DealCreatePage() {
             </div>
           )}
 
-          {success && (
-            <div className="mb-6 p-4 bg-apple-success/10 border border-apple-success/30 rounded-xl text-apple-success text-sm">
-              {success}
-            </div>
-          )}
+            {success && createdDeal && (
+              <div className="p-5 bg-apple-success/10 border border-apple-success/30 rounded-2xl space-y-4">
+                <div className="flex items-center space-x-3">
+                  <div className="w-9 h-9 rounded-full bg-apple-success/20 flex items-center justify-center flex-shrink-0">
+                    <svg className="w-5 h-5 text-apple-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-apple-success font-semibold">Deal created &amp; locked</p>
+                    <p className="text-apple-muted text-xs">Only people holding this invitation can get in.</p>
+                  </div>
+                </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+                <div className="p-3 rounded-xl border border-dashed border-apple-sky/40 bg-apple-sky/5">
+                  <p className="text-[10px] uppercase tracking-widest text-apple-muted mb-1.5">Invitation Code</p>
+                  <p className="text-white font-mono text-xs break-all leading-relaxed select-all">{createdDeal.invitation_code}</p>
+                </div>
+
+                <GlassButton variant="secondary" onClick={copyInviteLink} className="w-full">
+                  <span className="flex items-center justify-center space-x-2">
+                    {copied ? (
+                      <>
+                        <svg className="w-4 h-4 text-apple-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                        <span>Link Copied. One-Click Join</span>
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 010 5.656l-3 3a4 4 0 01-5.656 0l-1.5-1.5a4 4 0 010-5.656m8.485 0l1.5 1.5a4 4 0 010 5.656m-4.243-8.485l-3-3a4 4 0 00-5.656 0" />
+                        </svg>
+                        <span>Copy One-Click Invitation Link</span>
+                      </>
+                    )}
+                  </span>
+                </GlassButton>
+
+                <GlassButton
+                  className="w-full"
+                  onClick={() => navigate(`/deals/${createdDeal.id}/live`)}
+                >
+                  Enter Deal →
+                </GlassButton>
+              </div>
+            )}
+
+            {!success && (
+              <form onSubmit={handleSubmit} className="space-y-6">
             <GlassInput
               label="Seller Wallet Address"
               value={sellerId}
@@ -84,7 +154,7 @@ export function DealCreatePage() {
             />
             <p className="text-apple-muted text-xs ml-1">The seller who will perform the account creation</p>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <GlassInput
                 label="Amount"
                 type="number"
@@ -142,8 +212,10 @@ export function DealCreatePage() {
               Create Deal
             </GlassButton>
           </form>
+          )}
         </GlassCard>
       </main>
+      <SiteFooter />
     </div>
   );
 }
